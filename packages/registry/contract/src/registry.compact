@@ -1,0 +1,88 @@
+pragma language_version >= 0.22;
+
+import CompactStandardLibrary;
+
+new type DomainName = Bytes<128>;
+
+new type RegistryKey = Bytes<32>;
+
+new type DomainNameHash = Bytes<32>;
+
+new type UnixTimestampSeconds = Uint<64>;
+
+struct Entry {
+  expiry: UnixTimestampSeconds,
+  domainName: DomainName,
+}
+
+export ledger registry: Map<RegistryKey, Entry>;
+
+export ledger takenDomainNames: Set<DomainNameHash>;
+
+export ledger collateralAmount: Uint<128>;
+
+export ledger maximumRegistrationPeriod: UnixTimestampSeconds;
+
+witness secretKey(): Bytes<64>;
+
+constructor(requiredCollateral: Uint<128>, maxPeriod: UnixTimestampSeconds) {
+  collateralAmount = disclose(requiredCollateral);
+  maximumRegistrationPeriod = disclose(maxPeriod);
+}
+
+export circuit registerServer(entry: Entry): [] {
+  const disclosedEntry = disclose(entry);
+  assert(blockTimeGte((disclosedEntry.expiry - maximumRegistrationPeriod) as Uint<64>),
+         "period cannot be larger than maximumRegistrationPeriod"
+         );
+  const key = disclose(hashKey(secretKey()));
+  assert(!registry.member(key), "you already have an entry registered");
+  const domainNameHash = hashDomainName(disclosedEntry.domainName);
+  assert(!takenDomainNames.member(domainNameHash), "domain name already registered");
+  receiveUnshielded(nativeToken(), collateralAmount);
+
+  registry.insert(key, disclosedEntry);
+  takenDomainNames.insert(domainNameHash);
+}
+
+export circuit deregisterServer(key: RegistryKey, recipient: UserAddress): [] {
+  const disclosedKey = disclose(key);
+  assert(registry.member(disclosedKey), "key does not exist");
+  const existing = registry.lookup(disclosedKey);
+  if (blockTimeLt(disclose(existing.expiry) as Uint<64>)) {
+    assert(key == disclose(hashKey(secretKey())),
+           "you can only deregister your own entry before expiry"
+           );
+  }
+
+  sendUnshielded(
+    nativeToken(),
+    collateralAmount,
+    right<ContractAddress, UserAddress>(disclose(recipient))
+    );
+
+  takenDomainNames.remove(disclose(hashDomainName(existing.domainName)));
+  registry.remove(disclosedKey);
+}
+
+export circuit renewRegistration(expiry: UnixTimestampSeconds): [] {
+  const key = disclose(hashKey(secretKey()));
+  assert(registry.member(key), "you don't have a registered server");
+  const currentEntry = registry.lookup(key);
+  assert(blockTimeGte((disclose(expiry) - maximumRegistrationPeriod) as Uint<64>),
+         "period cannot be larger than maximumRegistrationPeriod"
+         );
+  const newEntry = Entry { expiry: expiry, domainName: currentEntry.domainName, };
+
+  registry.insert(key, disclose(newEntry));
+}
+
+circuit hashKey(key: Bytes<64>): RegistryKey {
+  return persistentHash<[Bytes<32>, Bytes<64>]>([pad(32, "registry:pkh"), key]) as RegistryKey;
+}
+
+circuit hashDomainName(domainName: DomainName): DomainNameHash {
+  return persistentHash<[Bytes<32>, DomainName]>(
+    [pad(32, "registry:domain-name"), domainName]
+    ) as DomainNameHash;
+}

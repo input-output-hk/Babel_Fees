@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "noEmit": true,
+    "target": "es2020",
+    "types": ["node"],
+    "paths": {
+      "@sundaeswap/capacity-exchange-core": ["../packages/midnight-core/src/index.ts"],
+      "@capacity-exchange/server": ["../apps/server/src/index.ts"]
+    }
+  }
+}

@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  release:
+    if: github.repository == 'SundaeSwap-finance/capacity-exchange'
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: go-task/setup-task@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Cache semgrep
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/pipx/venvs/semgrep
+            ~/.local/bin/semgrep
+          key: semgrep-${{ runner.os }}-1.174.0
+
+      - run: semgrep --version 2>/dev/null | grep -qx "1.174.0" || pipx install --force semgrep==1.174.0
+
+      - run: task check
+      - run: task check-client
+      - run: task build-all
+      - run: task test
+
+      - name: Configure npm authentication
+        run: npm config set //registry.npmjs.org/:_authToken ${{ secrets.PUBLISH_NPM_TOKEN }}
+
+      - name: Create Release PR or Publish
+        uses: changesets/action@v1
+        with:
+          version: bash -c "bunx changeset version && bun update"
+          publish: bun run publish:ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.PUBLISH_NPM_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.PUBLISH_NPM_TOKEN }}

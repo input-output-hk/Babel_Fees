@@ -1,0 +1,27 @@
+{
+  "name": "@capacity-exchange/tests",
+  "version": "1.0.5",
+  "private": true,
+  "type": "module",
+  "scripts": {},
+  "dependencies": {
+    "@capacity-exchange/demo-contracts": "workspace:^",
+    "@sundaeswap/capacity-exchange-nodejs": "workspace:^",
+    "@sundaeswap/capacity-exchange-registry": "workspace:^",
+    "@sundaeswap/capacity-exchange-registry-nodejs": "workspace:^",
+    "@sundaeswap/capacity-exchange-core": "workspace:^",
+    "@sundaeswap/capacity-exchange-providers": "workspace:^",
+    "@midnight-ntwrk/compact-js": "2.5.1",
+    "@midnight-ntwrk/compact-runtime": "0.15.0",
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@sundaeswap/capacity-exchange-client": "workspace:^",
+    "@midnight-ntwrk/midnight-js": "4.1.1",
+    "@midnight-ntwrk/wallet-sdk": "1.1.0",
+    "commander": "^14.0.2",
+    "rxjs": "^7.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "typescript": "^5.9.3"
+  }
+}

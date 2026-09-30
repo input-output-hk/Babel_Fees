@@ -1,0 +1,259 @@
+version: '3'
+
+output: prefixed
+
+includes:
+  _build:
+    taskfile: taskfiles/build.yml
+    internal: true
+    vars:
+      CONTRACTS_DIR: '{{.CONTRACTS_DIR}}'
+      WEBAPP_DIR: '{{.WEBAPP_DIR}}'
+  _demo:
+    taskfile: taskfiles/demo.yml
+    internal: true
+    vars:
+      CONTRACTS_DIR: '{{.CONTRACTS_DIR}}'
+      WEBAPP_DIR: '{{.WEBAPP_DIR}}'
+
+vars:
+  CONTRACTS_DIR: '{{.ROOT_DIR}}/apps/demo/contracts'
+  WEBAPP_DIR: '{{.ROOT_DIR}}/apps/demo'
+
+tasks:
+  install:
+    desc: Install dependencies
+    preconditions:
+      - sh: command -v bun
+        msg: 'bun is not installed. Install it: https://bun.sh'
+      - sh: 'BUN_V=$(bun --version) && test "$(printf "%s\n1.1.0\n" "$BUN_V" | sort -V | head -1)" = "1.1.0"'
+        msg: 'bun >= 1.1.0 is required. Update with: bun upgrade'
+    cmds:
+      - task: _build:install
+
+  compile-contracts:
+    desc: Compile Compact contracts
+    deps: [install]
+    cmds:
+      - task: _build:compile-contracts
+
+  deploy:
+    desc: Deploy contracts for a network (set DRY_RUN=1 to prove+balance without submitting)
+    deps: [_build:midnight-node, compile-contracts]
+    preconditions:
+      - sh: 'test -f {{.ROOT_DIR}}/wallet-mnemonic.{{.NETWORK_ID}}.txt'
+        msg: 'Missing wallet-mnemonic.{{.NETWORK_ID}}.txt — run task setup:demo to create it'
+    cmds:
+      - bun run --cwd {{.CONTRACTS_DIR}} deploy-all {{.NETWORK_ID}} {{if .DRY_RUN}}--dry-run{{end}}
+      - task: _deploy:post
+        vars:
+          NETWORK_ID: '{{.NETWORK_ID}}'
+          DRY_RUN: '{{.DRY_RUN}}'
+    requires:
+      vars: [NETWORK_ID]
+
+  _deploy:post:
+    internal: true
+    cmds:
+      - task: _demo:copy-configs
+      - bun {{.ROOT_DIR}}/scripts/demo-price-config.ts generate {{.NETWORK_ID}}
+    status:
+      - '{{if .DRY_RUN}}exit 0{{else}}exit 1{{end}}'
+
+  require-proof-server-url:
+    internal: true
+    preconditions:
+      - sh: '[ "{{.NETWORK_ID}}" = "preview" ] || [ "{{.NETWORK_ID}}" = "undeployed" ] || [ -n "$PROOF_SERVER_URL" ]'
+        msg: 'PROOF_SERVER_URL is required for {{.NETWORK_ID}}. Usage: NETWORK_ID={{.NETWORK_ID}} PROOF_SERVER_URL=<url> task <task>'
+
+  prompt-mnemonic:
+    internal: true
+    vars:
+      MNEMONIC_FILE: '{{.ROOT_DIR}}/wallet-mnemonic.{{.NETWORK_ID}}.txt'
+    status:
+      - test -f {{.MNEMONIC_FILE}}
+    cmds:
+      - echo "Enter your wallet mnemonic for {{.NETWORK_ID}}:" && read MNEMONIC < /dev/tty && echo "$MNEMONIC" > {{.MNEMONIC_FILE}}
+
+  init-env:
+    internal: true
+    status:
+      - test -f {{.ROOT_DIR}}/wallet-mnemonic.{{.NETWORK_ID}}.txt
+      - test -f {{.CONTRACTS_DIR}}/.env
+      - test -f {{.ROOT_DIR}}/apps/server/.env
+      - test -f {{.WEBAPP_DIR}}/.env
+    cmds:
+      - task: prompt-mnemonic
+        vars:
+          NETWORK_ID: '{{.NETWORK_ID}}'
+      - cp {{.CONTRACTS_DIR}}/.env.example {{.CONTRACTS_DIR}}/.env
+      - cp {{.ROOT_DIR}}/apps/server/.env.example {{.ROOT_DIR}}/apps/server/.env
+      - cp {{.WEBAPP_DIR}}/.env.example {{.WEBAPP_DIR}}/.env
+
+  setup:demo:
+    desc: 'One-time setup for demo: configure env, install, build, deploy'
+    deps: [require-proof-server-url]
+    cmds:
+      - task: init-env
+        vars:
+          NETWORK_ID: '{{.NETWORK_ID}}'
+      - task: install
+      - task: compile-contracts
+      - task: _demo:copy-zk-assets
+      - task: _build:webapp
+        vars:
+          NETWORK_ID: '{{.NETWORK_ID}}'
+      - task: _build:server
+      - task: deploy
+        vars:
+          NETWORK_ID: '{{.NETWORK_ID}}'
+      - echo "Setup complete. Run 'NETWORK_ID={{.NETWORK_ID}} task dev:demo' to start."
+    requires:
+      vars: [NETWORK_ID]
+
+  dev:demo:
+    desc: Start server and demo webapp with hot-reload
+    deps: [require-proof-server-url, _demo:require-deployed, _demo:require-demo-price-config, _build:libs]
+    cmds:
+      - task: _dev:run
+        vars:
+          NETWORK_ID: '{{.NETWORK_ID}}'
+          NAMES: core,node,providers,server,webapp,dashboard
+          COLORS: blue,cyan,magenta,green,yellow,red
+          EXTRA: >-
+            "bun run --filter @sundaeswap/capacity-exchange-providers build:watch"
+            "bun run --filter @capacity-exchange/server dev"
+            "bun run --filter @capacity-exchange/demo dev"
+            "bun run --filter @capacity-exchange/dashboard dev"
+    requires:
+      vars: [NETWORK_ID]
+
+  dev:server:
+    desc: Start the capacity exchange server with hot-reload
+    deps: [require-proof-server-url, _build:midnight-node]
+    cmds:
+      - task: _dev:run
+        vars:
+          NETWORK_ID: '{{.NETWORK_ID}}'
+          NAMES: core,node,server,dashboard
+          COLORS: blue,cyan,green,red
+          EXTRA: >-
+            "bun run --filter @capacity-exchange/server dev"
+            "bun run --filter @capacity-exchange/dashboard dev"
+    requires:
+      vars: [NETWORK_ID]
+
+  dev:webapp:
+    desc: Start the demo webapp with hot-reload
+    deps: [_demo:require-deployed, _build:providers]
+    cmds:
+      - task: _dev:run
+        vars:
+          NETWORK_ID: '{{.NETWORK_ID}}'
+          NAMES: core,node,providers,webapp
+          COLORS: blue,cyan,magenta,yellow
+          EXTRA: >-
+            "bun run --filter @sundaeswap/capacity-exchange-providers build:watch"
+            "bun run --filter @capacity-exchange/demo dev"
+    requires:
+      vars: [NETWORK_ID]
+
+  _dev:run:
+    internal: true
+    env:
+      MIDNIGHT_NETWORK: '{{.NETWORK_ID}}'
+      PRICE_CONFIG_FILE: 'price-config.{{.NETWORK_ID}}.json'
+      VITE_NETWORK_ID: '{{.NETWORK_ID}}'
+      VITE_CAPACITY_EXCHANGE_URL: 'http://localhost:3000'
+    cmds:
+      - >-
+        bunx concurrently --kill-others
+        -n {{.NAMES}} -c {{.COLORS}}
+        "bun run --filter @sundaeswap/capacity-exchange-core build:watch"
+        "bun run --filter @sundaeswap/capacity-exchange-nodejs build:watch"
+        {{.EXTRA}}
+
+  build:demo:
+    desc: Build demo webapp, server, and demo contracts
+    cmds:
+      - task: compile-contracts
+      - task: _demo:copy-zk-assets
+      - task: _demo:copy-configs
+      - task: _build:webapp
+        vars:
+          NETWORK_ID: '{{.NETWORK_ID}}'
+      - task: _build:server
+      - task: _build:typecheck-demo-contracts
+    requires:
+      vars: [NETWORK_ID]
+
+  build:libs:
+    desc: Build all library packages (core, node, providers, react-sdk)
+    cmds:
+      - task: _build:libs
+
+  build-all:
+    desc: Typecheck all TypeScript packages (compiles contracts first)
+    cmds:
+      - task: compile-contracts
+      - task: _build:build-all
+
+  test:
+    desc: Run tests
+    deps: [_build:libs, compile-contracts]
+    cmds:
+      - bun run --if-present --filter '*' test
+
+  test:integ:
+    desc: Run integration tests against local devnet
+    deps: [_build:libs]
+    preconditions:
+      - sh: curl -sSf http://localhost:8088/ready
+        msg: Indexer is not running on port 8088.
+    cmds:
+      - bun run --filter '*' test:integ
+
+  check:
+    desc: Lint and format check
+    deps: [_build:install]
+    cmds:
+      - bun run check
+      - task: semgrep
+
+  semgrep:
+    desc: Static analysis rules in .semgrep
+    preconditions:
+      - sh: command -v semgrep
+        msg: 'semgrep is not installed. Install it with `pipx install semgrep`.'
+    cmds:
+      - semgrep --config .semgrep --error --quiet .
+
+  fix:
+    desc: Lint and format fix
+    deps: [_build:install]
+    cmds:
+      - bun run fix
+
+  check-client:
+    desc: Check that the client has the latest schema from the server
+    deps: [_build:install, _build:server]
+    cmds:
+      - bun run check-client
+
+  check-release:
+    desc: Check that changes to published packages come with a changeset
+    deps: [_build:install]
+    cmds:
+      - bun run check-release
+
+  regenerate-client:
+    desc: Regenerate client with latest schema from server
+    deps: [_build:install, _build:server]
+    cmds:
+      - bun run regenerate-client
+
+  clean:
+    desc: Clean build artifacts and generated files
+    cmds:
+      - bun run --filter '*' clean || true
+      - find . -name node_modules -type d -prune -exec rm -rf {} +

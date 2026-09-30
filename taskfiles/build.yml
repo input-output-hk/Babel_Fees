@@ -1,0 +1,98 @@
+version: '3'
+
+# Internal build tasks — TypeScript package build dependency graph and shared tooling.
+# Included by root Taskfile.yml under the _build namespace.
+
+tasks:
+  # --- Bootstrap ---
+
+  install:
+    run: once
+    cmds:
+      - bun install
+
+  compile-contracts:
+    run: once
+    cmds:
+      - bun run compile
+
+  # --- Package build graph ---
+
+  midnight-core:
+    deps: [install]
+    cmds:
+      - bun run --filter @sundaeswap/capacity-exchange-core build
+
+  midnight-node:
+    deps: [midnight-core]
+    cmds:
+      - bun run --filter @sundaeswap/capacity-exchange-nodejs build
+
+  client:
+    deps: [install]
+    cmds:
+      - bun run --filter @sundaeswap/capacity-exchange-client build
+
+  libs:
+    deps: [react-sdk, registry-node, coupler]
+
+  registry:
+    deps: [compile-contracts]
+    cmds:
+      - bun run --filter @sundaeswap/capacity-exchange-registry build
+
+  registry-node:
+    deps: [midnight-node, registry]
+    cmds:
+      - bun run --filter @sundaeswap/capacity-exchange-registry-nodejs build
+
+  coupler:
+    deps: [providers, compile-contracts]
+    cmds:
+      - bun run --filter @sundaeswap/capacity-exchange-coupler build
+
+  providers:
+    deps: [client, registry]
+    cmds:
+      - bun run --filter @sundaeswap/capacity-exchange-providers build
+
+  react-sdk:
+    deps: [providers]
+    cmds:
+      - bun run --filter @sundaeswap/capacity-exchange-react-sdk build
+
+  server:
+    deps: [providers]
+    cmds:
+      - bun run --filter @capacity-exchange/server build
+
+  webapp:
+    deps: [libs]
+    env:
+      NETWORK_ID: '{{.NETWORK_ID}}'
+    cmds:
+      - bun run --filter @capacity-exchange/demo build
+    requires:
+      vars: [NETWORK_ID]
+
+  # --- Typecheck ---
+
+  typecheck-demo-contracts:
+    deps: [providers]
+    cmds:
+      - bun run --filter @capacity-exchange/demo-contracts build
+
+  # The e2e app is not built or published, but it is the only in-repo consumer of the
+  # coupler and of the providers testing seam, so nothing else catches a break in either.
+  typecheck-coupler-cli:
+    deps: [coupler]
+    cmds:
+      - bunx tsc --noEmit -p apps/coupler-cli/tsconfig.json
+
+  # TODO: Also typecheck test directories (packages/*/tests)
+  build-all:
+    deps: [libs, server, typecheck-demo-contracts, typecheck-coupler-cli]
+    cmds:
+      - task: webapp
+        vars:
+          NETWORK_ID: preview

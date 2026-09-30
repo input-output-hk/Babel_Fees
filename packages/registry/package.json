@@ -1,0 +1,51 @@
+{
+  "name": "@sundaeswap/capacity-exchange-registry",
+  "version": "3.0.1",
+  "description": "Registry contract types and utilities for the capacity exchange SDK",
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "contract/out",
+    "LICENSE.md"
+  ],
+  "scripts": {
+    "clean": "rm -rf contract/out/",
+    "compile": "bunx run-compactc contract/src/registry.compact contract/out",
+    "prebuild": "bun run --filter '@sundaeswap/capacity-exchange-core' build",
+    "build": "tsc",
+    "test": "vitest run",
+    "publish:prod": "bun publish --tolerate-republish"
+  },
+  "exports": {
+    ".": {
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./node": {
+      "bun": "./src/utils.ts",
+      "default": "./dist/utils.js"
+    },
+    "./contract/*": "./contract/out/contract/*"
+  },
+  "author": "",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "dependencies": {
+    "@sundaeswap/capacity-exchange-core": "workspace:^",
+    "@midnight-ntwrk/compact-js": "2.5.1",
+    "@midnight-ntwrk/compact-runtime": "0.15.0",
+    "@midnight-ntwrk/midnight-js": "4.1.1",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
+    "@midnight-ntwrk/wallet-sdk": "1.1.0"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/midnight-js-compact": "4.1.1",
+    "@types/node": "22.10.7",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "@midnight-ntwrk/ledger-v8": "8.1.0"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "name": "@sundaeswap/capacity-exchange-nodejs",
+  "version": "2.2.0",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE.md"
+  ],
+  "exports": {
+    ".": {
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "balances": "bun src/cli/balances.ts",
+    "split-night": "bun src/cli/split-night.ts"
+  },
+  "dependencies": {
+    "@sundaeswap/capacity-exchange-core": "workspace:^",
+    "@midnight-ntwrk/compact-js": "2.5.1",
+    "@midnight-ntwrk/midnight-js": "4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.1.1",
+    "@midnight-ntwrk/wallet-sdk": "1.1.0",
+    "dotenv": "17.2.3",
+    "rxjs": "^7.5",
+    "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "commander": "^14.0.2",
+    "typescript": "^5.9.3"
+  }
+}

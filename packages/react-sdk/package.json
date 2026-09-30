@@ -1,0 +1,35 @@
+{
+  "name": "@sundaeswap/capacity-exchange-react-sdk",
+  "version": "2.1.2",
+  "description": "React SDK to quickly integrate the capacity exchange into your app",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "prebuild": "bun run --filter '@sundaeswap/capacity-exchange-providers' build",
+    "build": "tsc",
+    "publish:prod": "bun publish --tolerate-republish"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/midnight-js": "4.1.1",
+    "@sundaeswap/capacity-exchange-providers": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  }
+}

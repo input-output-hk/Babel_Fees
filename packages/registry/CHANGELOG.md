@@ -1,0 +1,93 @@
+# @sundaeswap/capacity-exchange-registry
+
+## 3.0.1
+
+### Patch Changes
+
+- Updated dependencies [f561665]
+- Updated dependencies [b1d5ce6]
+  - @sundaeswap/capacity-exchange-core@2.0.0
+
+## 3.0.0
+
+### Major Changes
+
+- 50dc9bd: Extract node.js dependencies from registry, fixing browser support
+
+## 2.0.3
+
+### Patch Changes
+
+- c3f36f9: Update CI to bump versions as needed
+- Updated dependencies [c3f36f9]
+  - @sundaeswap/capacity-exchange-core@1.3.2
+  - @sundaeswap/capacity-exchange-nodejs@2.1.2
+
+## 2.0.2
+
+### Patch Changes
+
+- 0f612a3: Reference latest versions of internal modules
+- Updated dependencies [0f612a3]
+  - @sundaeswap/capacity-exchange-core@1.3.1
+  - @sundaeswap/capacity-exchange-nodejs@2.1.1
+
+## 2.0.1
+
+### Patch Changes
+
+- fb55574: Publish modules to npm
+
+## 2.0.0
+
+### Major Changes
+
+- df0e5d6: Registry stores bare domain names instead of IP+port; server URLs are resolved at connection time via DNS SRV records (`_capacityexchange._tcp.<domainName>`) using DNS-over-HTTPS.
+
+  **Breaking changes — `@sundaeswap/capacity-exchange-registry`:**
+  - `RegistryEntry.ip` and `RegistryEntry.port` removed; replaced by `RegistryEntry.domainName: DomainName`
+  - `IpAddress`, `IPv4`, `IPv6`, `ContractIpAddress` types removed
+  - `ipToContract` / `ipFromContract` removed; replaced by `domainNameToContract` / `domainNameFromContract`
+  - `register` CLI argument changed from `<ip> <port>` to `<domainname>`
+  - Contract redeployed for PREVIEW network: `takenSocketAddresses` → `takenDomainNames`; `Entry.ip`/`Entry.port` → `Entry.domainName`
+  - Contract not redeployed for PREPROD network.
+  - New exports: `DomainName`, `SrvName`, `SRV_SERVICE_PREFIX`, `toDomainName`, `toSrvName`
+
+  **Breaking changes — `@sundaeswap/capacity-exchange-providers`:**
+  - `fetchRegistryCesUrls` now resolves domain names via DoH SRV lookup instead of constructing URLs from stored IP+port
+
+### Minor Changes
+
+- 6b97231: Upgrade midnight dependencies to latest preprod versions.
+  Fix import style to work on npm without bundling.
+
+### Patch Changes
+
+- 94ec760: Updated default address of preprod
+- Updated dependencies [6b97231]
+- Updated dependencies [d0ddfd8]
+  - @sundaeswap/capacity-exchange-core@1.3.0
+  - @sundaeswap/capacity-exchange-nodejs@2.1.0
+
+## 1.1.0
+
+### Minor Changes
+
+- af592bf: - Rename `refreshValidity` → `renewRegistration` and `validTo` → `expiry` throughout
+  - Rename `ValidityInterval` → `Period` (`maximumValidityInterval` → `maximumRegistrationPeriod`, `maxValidityInterval` → `maxPeriod`)
+  - Add `claim-expired` CLI to deregister expired entries without a secret key
+  - CLI arguments now accept days instead of raw seconds for registration period
+  - Use randomly generated `privateStateId` per call
+
+### Patch Changes
+
+- 8dfe09a: Use `@midnight-ntwrk/midnight-js-compact` to compile contracts, instead of bundled compactc
+- 19de633: Add `parsePositiveNumber(name, raw)` helper. Use it in `buildWalletConfig` and the registry CLIs (`deploy`, `register`, `renew-registration`) instead of inline `Number(...) + isFinite + > 0` checks.
+- 9c5d7f2: Use `workspace:*` for internal deps so bun always links the local package instead of fetching a stale published version.
+- Updated dependencies [da29c54]
+- Updated dependencies [3ae76c4]
+- Updated dependencies [19de633]
+- Updated dependencies [64ef4d9]
+- Updated dependencies [9c5d7f2]
+  - @sundaeswap/capacity-exchange-nodejs@2.0.0
+  - @sundaeswap/capacity-exchange-core@1.2.0

@@ -1,0 +1,37 @@
+{
+  "name": "@sundaeswap/capacity-exchange-client",
+  "version": "1.2.2",
+  "description": "Capacity Exchange Client",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "type": "module",
+  "main": "generated/dist/index.js",
+  "module": "generated/dist/index.js",
+  "types": "generated/dist/index.d.ts",
+  "files": [
+    "generated",
+    "LICENSE.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "bun": "./generated/index.ts",
+      "default": "./generated/dist/index.js"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf generated/dist generated/tsconfig.tsbuildinfo",
+    "regenerate-client": "openapi-generator-cli generate -i openapi.json -g typescript-fetch -o generated --additional-properties=supportsES6=true,importFileExtension=.js",
+    "build": "tsc",
+    "publish:prod": "bun publish --tolerate-republish"
+  },
+  "dependencies": {
+    "es6-promise": "^4.2.4",
+    "whatwg-fetch": "^3.0.0"
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.39.0",
+    "typescript": "^5.9.3"
+  }
+}
